@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Skin Disease Detection</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        video {
+            border: 2px solid #926ad4;
+            width: 70%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Skin Disease Detection</h1>
+    <p>Allow access to your webcam to start the detection.</p>
+    <video id="video" autoplay></video>
+    <div class="controls">
+        <button id="startButton">Start</button>
+        <button id="stopButton" disabled>Stop</button>
+    </div>
+    <div class="result" id="predictionResult">
+        <p>Prediction will appear here...</p>
+        <p id="confidence"></p>
+        <p id="medication"></p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const predictionResult = document.getElementById('predictionResult');
+        const confidenceElement = document.getElementById('confidence');
+        const medicationElement = document.getElementById('medication');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        let webcamStream = null;
+        let intervalId = null;
+
+        // Start the webcam
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = webcamStream;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+
+                // Capture frames every 2 seconds
+                intervalId = setInterval(captureAndSendFrame, 2000);
+            } catch (error) {
+                console.error('Error accessing the webcam:', error);
+                predictionResult.innerHTML = '<span class="error">Error accessing the webcam. Please allow camera permissions.</span>';
+            }
+        }
+
+        // Stop the webcam
+        function stopWebcam() {
+            if (webcamStream) {
+                const tracks = webcamStream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            webcamStream = null;
+            video.srcObject = null;
+            clearInterval(intervalId);
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            predictionResult.innerHTML = '<p>Webcam stopped.</p>';
+            confidenceElement.innerText = '';
+            medicationElement.innerText = '';
+        }
+
+        // Capture a frame and send it to the backend
+        async function captureAndSendFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const base64Image = canvas.toDataURL('image/jpeg').split(',')[1];
+
+            predictionResult.innerText = 'Loading...';
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/realtime-predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image }),
+                });
+
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+                const data = await response.json();
+
+                // Update the result
+                if (data.predicted_class) {
+                    predictionResult.innerText = `Predicted Class: ${data.predicted_class}`;
+                    confidenceElement.innerText = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+                    medicationElement.innerText = `Recommended Medication: ${data.medication}`;
+                } else {
+                    predictionResult.innerText = data.message;
+                    confidenceElement.innerText = '';
+                    medicationElement.innerText = '';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                predictionResult.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+                confidenceElement.innerText = '';
+                medicationElement.innerText = '';
+            }
+        }
+
+        // Attach event listeners
+        startButton.addEventListener('click', startWebcam);
+        stopButton.addEventListener('click', stopWebcam);
+    </script>
+</body>
+</html>

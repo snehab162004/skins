@@ -1,0 +1,35 @@
+# Virtual environment
+env/
+venv/
+
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# Dataset files
+processed_dataset/
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.sqlite3
+
+# Build files
+*.egg-info/
+dist/
+build/
+
+# Model files
+*.h5
+*.ckpt

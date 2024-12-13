@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skin Disease Prediction</title>
+
+    <!-- Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="fixed-top py-3">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a href="#" class="logo">Skin Care<span class="fas fa-bacteria"></span></a>
+            <div id="menu-bar" class="fas fa-bars d-inline-block d-md-none"></div>
+            <nav class="nav">
+                <a href="#home">Home</a>
+                <a href="#about">About</a>
+                <a href="#prevent">Skin type and disease</a>
+                <a href="#prediction">Skin Disease prediction</a>
+                <a href="#experts">Our Team</a>
+                <!-- <a href="realtime.html" target="_blank">Real-time Detection</a> -->
+            </nav>
+        </div>
+    </header>
+
+    <!-- Home Section -->
+    <section class="home" id="home">
+        <div class="container">
+            <div class="row min-vh-100 align-items-center pt-5">
+                <div class="col-md-6">
+                    <img src="{{ url_for('static', filename='Images/p1.png') }}" class="w-100" alt="">
+                </div>
+                <div class="col-md-6 content text-center text-md-start pl-md-5">
+                    <span>Your skin is your best accessory</span>
+                    <h3>Protect yourself from skin disease</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about" id="about">
+        <div class="container">
+            <div class="row align-items-center flex-wrap-reverse">
+                <div class="col-md-6 content">
+                    <h3>What are Skin Diseases?</h3>
+                    <p>Skin diseases are conditions that affect your skin. These diseases may cause rashes, inflammation, itchiness, or other skin changes.</p>
+                    <a href="./nextpage.html" class="link-btn">Learn more</a>
+                </div>
+                <div class="col-md-6">
+                    <img src="{{ url_for('static', filename='Images/sword.png') }}" class="w-100" alt="">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prediction Section -->
+    <section class="prediction" id="prediction">
+        <div class="content">
+            <h1 class="heading"><span>Skin Disease</span> Prediction</h1>
+            <p>Select an image of your skin for prediction:</p>
+            <!-- Form to upload the image -->
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="file" id="imageInput" accept="image/*" required>
+                <br><br>
+                <button type="submit" class="link-btn">Upload Image</button>
+            </form>
+
+            <!-- Display uploaded image -->
+            <div id="uploadedImage" style="margin-top: 20px;"></div>
+
+            <!-- Result Section -->
+            <div class="result" id="predictionResult" style="margin-top: 20px;">Prediction result will appear here.</div>
+
+            <!-- Reset button -->
+            <button class="reset-button link-btn" id="resetButton" style="display: none;">Reset</button>
+        </div>
+    </section>
+
+    <!-- JavaScript -->
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent form submission
+
+            const fileInput = document.getElementById('imageInput');
+
+            // Validate if a file is selected
+            if (!fileInput.files.length) {
+                document.getElementById('predictionResult').innerHTML = '<span style="color: red;">Please select a file before uploading.</span>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                // Send a POST request
+                const response = await fetch('http://127.0.0.1:5000/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Display the uploaded image
+                const uploadedImage = document.getElementById('uploadedImage');
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    uploadedImage.innerHTML = `<img src="${e.target.result}" alt="Uploaded Image" class="img-fluid" style="max-width: 200px; border: 2px solid #ddd; border-radius: 10px;">`;
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+
+                // Display prediction results
+                const predictionResult = document.getElementById('predictionResult');
+                predictionResult.innerHTML = `
+                    <p><strong>Predicted Class:</strong> ${data.predicted_class}</p>
+                    <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(2)}%</p>
+                    <p><strong>Recommended Medication:</strong> ${data.medication}</p>
+                `;
+
+                // Show reset button
+                document.getElementById('resetButton').style.display = 'inline-block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('predictionResult').innerHTML = `<span style="color: red;">Error: ${error.message}</span>`;
+            }
+        });
+
+        document.getElementById('resetButton').addEventListener('click', () => {
+            document.getElementById('imageInput').value = ''; // Clear file input
+            document.getElementById('uploadedImage').innerHTML = ''; // Clear uploaded image
+            document.getElementById('predictionResult').innerHTML = ''; // Clear results
+            document.getElementById('resetButton').style.display = 'none'; // Hide reset button
+        });
+    </script>
+</body>
+</html>
